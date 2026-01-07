@@ -129,9 +129,15 @@ Page({
       success: (res) => {
         wx.hideLoading();
         if (res.statusCode !== 200) {
-          wx.showToast({ title: '服务繁忙: ' + res.statusCode, icon: 'none' });
+          // 单独处理 400 错误
+          if (res.statusCode === 400) {
+            wx.showToast({ title: '链接错误或不支持', icon: 'none' });
+          } else {
+            wx.showToast({ title: '服务繁忙: ' + res.statusCode, icon: 'none' });
+          }
           return;
         }
+        
         const apiData = res.data;
         if (apiData.code === 200 && apiData.data) {
           this.handleSuccess(apiData.data);
