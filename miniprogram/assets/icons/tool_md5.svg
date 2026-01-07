@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24">
+  <g fill="none" stroke="#1F7BFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 3h7l3 3v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+    <path d="M14 3v4h4"/>
+    <path d="M8 14h8"/>
+    <path d="M8 17h6"/>
+    <path d="M8 11h5"/>
+  </g>
+  <rect x="6.8" y="8.6" width="6.4" height="3.4" rx="0.8" fill="#1F7BFF" opacity="0.12"/>
+  <text x="8.1" y="11.2" font-size="2.6" fill="#1F7BFF" font-family="Arial, sans-serif">MD</text>
+</svg>

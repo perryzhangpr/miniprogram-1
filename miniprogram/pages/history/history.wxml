@@ -1,0 +1,66 @@
+<view class="page">
+
+<view class="hero">
+  <view class="nav-spacer" style="height: {{navH}}px;"></view>
+  <view class="hero-sheen"></view>
+
+  <view class="title">
+    <text class="t1">历史记录</text>
+    <text class="t2">最近解析过的内容</text>
+  </view>
+
+  <view class="top-actions">
+    <view class="pill" bindtap="onClearTap">清空</view>
+  </view>
+</view>
+
+<view class="content">
+  <view class="empty" wx:if="{{!list || list.length === 0}}">
+    <view class="empty-card">
+      <text class="empty-title">暂无记录</text>
+      <text class="empty-desc">你解析过的链接会出现在这里</text>
+    </view>
+  </view>
+
+  <view class="list" wx:else>
+    <view class="item" wx:for="{{list}}" wx:key="id">
+      <view class="thumb">
+        <image class="thumb-img" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
+      </view>
+
+      <view class="info">
+        <view class="row1">
+          <text class="name">{{item.title || '未命名内容'}}</text>
+          <text class="tag">{{item.type || '视频'}}</text>
+        </view>
+
+        <text class="desc" wx:if="{{item.desc}}">{{item.desc}}</text>
+        <text class="desc desc-empty" wx:else>无文案</text>
+
+        <view class="row2">
+          <text class="time">{{item.timeText || '刚刚'}}</text>
+          <view class="btns">
+            <view class="mini" bindtap="onCopyUrl" data-url="{{item.shareUrl}}">复制链接</view>
+            <view class="mini mini-main" bindtap="onReparse" data-url="{{item.shareUrl}}">再次解析</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="tabbar">
+  <view class="tab" bindtap="goHome">
+    <image class="tab-ico" src="/assets/icons/tab_home_on.svg" mode="aspectFit" style="opacity: 0.4; filter: grayscale(100%);" />
+    <text class="tab-txt">首页</text>
+  </view>
+
+  <view class="tab">
+    <image class="tab-ico" src="/assets/icons/tab_me_off.svg" mode="aspectFit" />
+    <text class="tab-txt tab-on">历史记录</text>
+  </view>
+
+  <view class="safe" style="height: {{safeB}}px;"></view>
+</view>
+
+</view>

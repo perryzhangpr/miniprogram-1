@@ -1,0 +1,122 @@
+<!-- pages/index/index.wxml -->
+<view class="page">
+
+<!-- 顶部区域 -->
+<view class="hero">
+  <view class="nav-spacer" style="height: {{navH}}px;"></view>
+  <view class="hero-sheen"></view>
+
+  <view class="title">
+    <text class="t1">灵趣素材小助手+</text>
+    <text class="t2">全网视频 / 图文素材 · 一键无痕提取</text>
+  </view>
+
+  <!-- 输入卡片 -->
+  <view class="card">
+    <view class="input-wrap">
+      <textarea
+        class="input"
+        placeholder="粘贴视频链接（抖音、西瓜、快手、B站、微博、小红书等等）"
+        placeholder-class="ph"
+        value="{{inputUrl}}"
+        auto-height
+        maxlength="-1"
+        bindinput="onInput"
+      />
+    </view>
+
+    <view class="btn-row">
+      <view class="btn btn-gray" bindtap="onLeftBtnTap">
+        {{inputUrl ? '清空内容' : '粘贴链接'}}
+      </view>
+
+      <view class="btn btn-blue" bindtap="startParse">
+        <image class="btn-ico" src="/assets/icons/wand.svg" mode="aspectFit" style="filter: brightness(0) invert(1);" />
+        <text class="btn-blue-txt">一键提取/去水印</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 内容区 -->
+<view class="content">
+
+<view class="detail" wx:if="{{result}}">
+
+  <view class="author-row">
+    <image class="author-avatar" src="{{meta.author.avatar}}" mode="aspectFill" />
+    <view class="author-info">
+      <text class="author-name">{{meta.author.name}}</text>
+      <text class="author-tip">作品作者</text>
+    </view>
+    <view class="stat-box">
+      <view class="stat-item">❤️ {{meta.stats.digg}}</view>
+      <view class="stat-item">💬 {{meta.stats.comment}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{!isImageMode}}" style="margin-top:20rpx;">
+    <video class="player" src="{{result}}" poster="{{meta.coverUrl}}" controls show-mute-btn="{{true}}" />
+  </view>
+
+  <view wx:else style="margin-top:20rpx;">
+    <view class="img-grid">
+      <image wx:for="{{result}}" wx:key="*this" class="img-item" src="{{item}}" mode="aspectFill" data-url="{{item}}" bindtap="previewImage" />
+    </view>
+  </view>
+
+  <view class="music-card" wx:if="{{meta.music.url}}">
+    <image class="music-cover" src="{{meta.music.cover || meta.coverUrl}}" mode="aspectFill" />
+    <view class="music-info">
+      <text class="music-title">🎵 {{meta.music.title}}</text>
+      <text class="music-author">{{meta.music.author}}</text>
+    </view>
+    <view class="music-btn" bindtap="downloadMusic">下载</view>
+  </view>
+
+  <view class="tags-row" wx:if="{{meta.tags.length > 0}}">
+    <text class="tag-item" wx:for="{{meta.tags}}" wx:key="*this">#{{item}}</text>
+  </view>
+
+  <view class="desc-box" bindtap="copyDesc">
+    <text class="desc-text" selectable="true">{{meta.desc || '暂无文案'}}</text>
+  </view>
+
+  <view class="bottom-actions">
+    <view class="bbtn bbtn-ghost" bindtap="handleSaveCover" wx:if="{{meta.coverUrl}}">保存封面</view>
+    <view class="bbtn bbtn-main" wx:if="{{!isImageMode}}" bindtap="handleSaveVideo">保存视频</view>
+    <view class="bbtn bbtn-main" wx:else bindtap="handleSaveImages">保存图片</view>
+  </view>
+
+</view>
+
+  <!-- 声明 -->
+  <view class="declare">
+    <text class="declare-text">本小程序仅提供链接解析技术服务，不存储任何内容。解析结果的所有权归原作者所有，仅供个人欣赏或学习使用，严禁用于商业用途。</text>
+  </view>
+
+</view>
+
+<!-- 加载遮罩 -->
+<view class="mask" wx:if="{{isLoading}}">
+  <view class="mask-card">
+    <view class="spinner"></view>
+    <text class="mask-text">解析中…</text>
+  </view>
+</view>
+
+<view class="tabbar">
+  <view class="tab" bindtap="goHome">
+    <image class="tab-ico" src="/assets/icons/tab_home_on.svg" mode="aspectFit" />
+    <text class="tab-txt tab-on">首页</text>
+  </view>
+
+  <view class="tab" bindtap="goHistory">
+    <image class="tab-ico" src="/assets/icons/tab_me_off.svg" mode="aspectFit" style="opacity: 0.4; filter: grayscale(100%);" />
+    <text class="tab-txt">历史记录</text>
+  </view>
+
+  <view class="safe" style="height: {{safeB}}px;"></view>
+</view>
+
+</view>
