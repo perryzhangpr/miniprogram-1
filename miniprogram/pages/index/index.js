@@ -18,7 +18,6 @@ Page({
     isImageMode: false,
     isLoading: false,
 
-    // ✅ 完整定义的 meta 对象
     meta: {
       title: '',
       desc: '',
