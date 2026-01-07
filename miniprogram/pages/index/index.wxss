@@ -371,7 +371,7 @@ page { margin: 0; padding: 0; }
   box-sizing: border-box;
 }
 
-/* ✅ 文案显示更多行（4行截断，超出省略） */
+
 .desc-text{
   font-size: 24rpx;
   line-height: 36rpx;
@@ -383,7 +383,7 @@ page { margin: 0; padding: 0; }
   overflow: hidden;
 }
 
-/* ✅（可选）让“视频链接”按钮跟你主题色一致（不改其它） */
+
 .mini-btn{
   background: rgba(217, 77, 148, 0.12);
   color: #D94D94;
