@@ -8,6 +8,10 @@ function pickCoverUrl(data) {
   return origin || cover || dyn || '';
 }
 
+const { DEFAULT_SAFE_AREA_OFFSET, getNavHeights } = require('../../utils/layout');
+
+const SAFE_AREA_OFFSET = DEFAULT_SAFE_AREA_OFFSET;
+
 Page({
   data: {
     // UI 适配数据
@@ -40,19 +44,11 @@ Page({
   },
 
   onLoad() {
-    const sys = wx.getSystemInfoSync();
-    // 计算底部安全区 (手动减去15px调整视觉)
-    let safeB = sys.safeArea ? (sys.screenHeight - sys.safeArea.bottom) : 0;
-    if (safeB > 0) {
-      safeB = safeB - 15;
-      if (safeB < 0) safeB = 0;
-    }
-
-    const navH = (sys.statusBarHeight || 0) + 44;
+    const { navH, safeB } = getNavHeights({ offset: SAFE_AREA_OFFSET });
 
     this.setData({
-      navH: navH,
-      safeB: safeB
+      navH,
+      safeB
     });
   },
 
