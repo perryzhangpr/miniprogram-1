@@ -10,7 +10,6 @@ function pickCoverUrl(data) {
 
 Page({
   data: {
-    // UI 适配数据
     navH: 0,
     safeB: 0,
 
