@@ -1,4 +1,8 @@
 // miniprogram/pages/history/history.js
+const { COMPACT_SAFE_AREA_OFFSET, getNavHeights } = require('../../utils/layout');
+
+const SAFE_AREA_OFFSET = COMPACT_SAFE_AREA_OFFSET;
+
 Page({
   data: {
     navH: 0,
@@ -7,19 +11,9 @@ Page({
   },
 
   onLoad() {
-    const sys = wx.getSystemInfoSync();
+    const { navH, safeB } = getNavHeights({ offset: SAFE_AREA_OFFSET });
 
-    // ✅ 修改后的逻辑：
-    let safeB = sys.safeArea ? (sys.screenHeight - sys.safeArea.bottom) : 0;
-    if (safeB > 0) {
-      safeB = safeB - 10;
-      if (safeB < 0) safeB = 0;
-    }
-    
-    this.setData({
-      navH: (sys.statusBarHeight || 0) + 44,
-      safeB: safeB
-    });
+    this.setData({ navH, safeB });
   },
 
   onShow() {
