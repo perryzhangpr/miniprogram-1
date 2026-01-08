@@ -351,32 +351,64 @@ downloadMusic() {
   },
 
   handleSaveVideo() {
-    if (!this.data.result) return;
+    // 1. 检查有没有视频地址
+    if (!this.data.result) {
+      wx.showToast({ title: '没有可保存的视频', icon: 'none' });
+      return;
+    }
 
-    wx.showLoading({ title: '下载视频中...' });
+    wx.showLoading({ title: '视频下载中...' });
+
+    // 2. 先下载视频文件到本地临时路径
     wx.downloadFile({
       url: this.data.result,
       success: (res) => {
+        // 下载成功 (HTTP 200)
         if (res.statusCode === 200) {
+          
+          // 3. 尝试保存到系统相册
           wx.saveVideoToPhotosAlbum({
             filePath: res.tempFilePath,
             success: () => {
               wx.hideLoading();
-              wx.showToast({ title: '已保存到相册', icon: 'success' });
+              wx.showToast({ title: '保存成功！', icon: 'success' });
             },
             fail: (err) => {
               wx.hideLoading();
+              console.error('保存相册失败:', err);
+
+              // 先检查是不是还没给相册权限
               this.checkAuth(err);
+
+              // ✨✨✨ 核心：这里一定要弹窗！✨✨✨
+              // 如果错误不是权限问题（比如 invalid video），就弹窗告诉用户
+              if (err.errMsg && !err.errMsg.includes('auth')) {
+                wx.showModal({
+                  title: '保存失败',
+                  content: 'iOS系统拒绝保存此视频(通常是格式不支持)。\n错误详情: ' + err.errMsg,
+                  showCancel: false
+                });
+              }
             }
           });
         } else {
+          // 下载请求返回了非 200 状态码 (比如 404, 500)
           wx.hideLoading();
-          wx.showToast({ title: '下载失败', icon: 'none' });
+          wx.showModal({
+            title: '下载失败',
+            content: '服务器返回错误码: ' + res.statusCode,
+            showCancel: false
+          });
         }
       },
-      fail: () => {
+      fail: (err) => {
+        // 网络不通，或者域名校验失败，或者超时
         wx.hideLoading();
-        wx.showToast({ title: '下载失败', icon: 'none' });
+        wx.showModal({
+          title: '下载连接错误',
+          content: '无法连接到服务器，请检查网络。\n详情: ' + (err.errMsg || JSON.stringify(err)),
+          showCancel: false
+        });
       }
     });
   },
@@ -462,75 +494,67 @@ downloadMusic() {
     }
   },
 
-  // 📺 B 站专用解析函数
-  handleBilibiliParse(url) {
-    wx.cloud.callContainer({
-      config: { env: this.config.envId },
-      // 调用我们新写的 B 站接口
-      path: `/api/bilibili/parse?url=${encodeURIComponent(url)}`,
-      header: {
-        'X-WX-SERVICE': this.config.serviceName
-      },
-      method: 'GET',
-      success: (res) => {
-        wx.hideLoading();
-        const data = res.data;
+// 📺 B 站专用解析函数 (修复遮罩不消失的问题)
+handleBilibiliParse(url) {
+  wx.cloud.callContainer({
+    config: { env: this.config.envId },
+    path: `/api/bilibili/parse?url=${encodeURIComponent(url)}`,
+    header: {
+      'X-WX-SERVICE': this.config.serviceName
+    },
+    method: 'GET',
+    success: (res) => {
+      const data = res.data;
 
-        // 检查后端返回的状态
-        if (data.status === 'success' || data.code === 200) {
-          const info = data.data;
+      // ✅ 只要后端返回成功 (200)，无条件放行！
+      if (data.status === 'success' || data.code === 200) {
+        const info = data.data;
+        const proxyUrl = this.data.cloudDomain + info.video_url;
 
-          // 🛠️ 关键步骤：拼接完整的代理播放地址
-          // 后端返回的是相对路径: /api/bilibili/proxy?target=...
-          // 我们要拼上前面的域名
-          const proxyUrl = this.data.cloudDomain + info.video_url;
-
-          // 手动构造 meta 数据（因为 B 站接口返回的字段比较少）
-          const meta = {
+        this.setData({
+          result: proxyUrl,     
+          isImageMode: false,   
+          
+          meta: {
             ...this.data.meta,
             title: info.desc || 'B站视频',
             desc: info.desc || '',
             coverUrl: info.cover_url || '',
-            videoUrl: proxyUrl, // 这里放代理地址
-            // B站接口暂时没返回头像和名字，先给个默认的
+            videoUrl: proxyUrl,
             author: { name: 'Bilibili UP主', avatar: '../../assets/icons/avatar.png' },
             stats: { digg: 0, comment: 0, collect: 0, share: 0 },
             tags: []
-          };
+          }
+        });
 
-          // 更新页面数据，让视频播放器显示
-          this.setData({
-            result: proxyUrl,  // <video src="{{result}}">
-            isImageMode: false,
-            meta: meta
-          });
+        // 存入历史记录
+        this.saveToHistory({
+          id: new Date().getTime(),
+          title: info.desc || 'B站视频',
+          desc: info.desc || '',
+          coverUrl: info.cover_url || '',
+          type: '视频(B站)',
+          shareUrl: url,
+          timeText: this.formatTime(new Date())
+        });
 
-          // 存入历史记录
-          this.saveToHistory({
-            id: new Date().getTime(),
-            title: meta.title,
-            desc: meta.desc,
-            coverUrl: meta.coverUrl,
-            type: '视频(B站)',
-            shareUrl: this.data.meta.shareUrl,
-            timeText: this.formatTime(new Date())
-          });
+        wx.showToast({ title: '解析成功', icon: 'success' });
 
-          wx.showToast({ title: 'B站解析成功', icon: 'success' });
-
-        } else {
-          wx.showToast({ title: '解析失败: ' + (data.msg || '未知错误'), icon: 'none' });
-        }
-      },
-      fail: (err) => {
-        wx.hideLoading();
-        console.error('B站解析请求失败', err);
-        wx.showToast({ title: '网络错误', icon: 'none' });
-      },
-      complete: () => {
-        this.setData({ isLoading: false });
+      } else {
+        wx.showToast({ title: '解析失败: ' + (data.msg || '未知错误'), icon: 'none' });
       }
-    });
-  }
+    },
+    fail: (err) => {
+      console.error('B站解析请求失败', err);
+      wx.showToast({ title: '网络错误', icon: 'none' });
+    },
+    
+    // ✨✨✨ 核心修复：无论成功失败，都在这里关闭转圈圈 ✨✨✨
+    complete: () => {
+      wx.hideLoading(); // 关掉系统的小圈圈
+      this.setData({ isLoading: false }); // 关掉你那个白色方块遮罩！
+    }
+  });
+},
 
 });
