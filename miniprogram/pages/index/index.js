@@ -12,6 +12,7 @@ Page({
   data: {
     navH: 0,
     safeB: 0,
+    cloudDomain:'https://douyin-api-210719-7-1392959478.sh.run.tcloudbase.com',
 
     inputUrl: '',
     result: null,
@@ -122,6 +123,13 @@ Page({
       result: null,
       meta: { ...this.data.meta, shareUrl: cleanUrl }
     });
+
+    if (cleanUrl.includes('bilibili.com') || cleanUrl.includes('b23.tv')) {
+      wx.showLoading({ title: 'B站解析中...' });
+      this.handleBilibiliParse(cleanUrl); // 走 B 站专用通道
+      return; // 结束，不执行下面的代码
+    }
+
     wx.showLoading({ title: '云端解析中...' });
 
     wx.cloud.callContainer({
@@ -452,5 +460,77 @@ downloadMusic() {
     } else {
       this.onlyPaste();
     }
+  },
+
+  // 📺 B 站专用解析函数
+  handleBilibiliParse(url) {
+    wx.cloud.callContainer({
+      config: { env: this.config.envId },
+      // 调用我们新写的 B 站接口
+      path: `/api/bilibili/parse?url=${encodeURIComponent(url)}`,
+      header: {
+        'X-WX-SERVICE': this.config.serviceName
+      },
+      method: 'GET',
+      success: (res) => {
+        wx.hideLoading();
+        const data = res.data;
+
+        // 检查后端返回的状态
+        if (data.status === 'success' || data.code === 200) {
+          const info = data.data;
+
+          // 🛠️ 关键步骤：拼接完整的代理播放地址
+          // 后端返回的是相对路径: /api/bilibili/proxy?target=...
+          // 我们要拼上前面的域名
+          const proxyUrl = this.data.cloudDomain + info.video_url;
+
+          // 手动构造 meta 数据（因为 B 站接口返回的字段比较少）
+          const meta = {
+            ...this.data.meta,
+            title: info.desc || 'B站视频',
+            desc: info.desc || '',
+            coverUrl: info.cover_url || '',
+            videoUrl: proxyUrl, // 这里放代理地址
+            // B站接口暂时没返回头像和名字，先给个默认的
+            author: { name: 'Bilibili UP主', avatar: '../../assets/icons/avatar.png' },
+            stats: { digg: 0, comment: 0, collect: 0, share: 0 },
+            tags: []
+          };
+
+          // 更新页面数据，让视频播放器显示
+          this.setData({
+            result: proxyUrl,  // <video src="{{result}}">
+            isImageMode: false,
+            meta: meta
+          });
+
+          // 存入历史记录
+          this.saveToHistory({
+            id: new Date().getTime(),
+            title: meta.title,
+            desc: meta.desc,
+            coverUrl: meta.coverUrl,
+            type: '视频(B站)',
+            shareUrl: this.data.meta.shareUrl,
+            timeText: this.formatTime(new Date())
+          });
+
+          wx.showToast({ title: 'B站解析成功', icon: 'success' });
+
+        } else {
+          wx.showToast({ title: '解析失败: ' + (data.msg || '未知错误'), icon: 'none' });
+        }
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        console.error('B站解析请求失败', err);
+        wx.showToast({ title: '网络错误', icon: 'none' });
+      },
+      complete: () => {
+        this.setData({ isLoading: false });
+      }
+    });
   }
+
 });
