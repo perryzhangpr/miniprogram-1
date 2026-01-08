@@ -52,6 +52,12 @@ Page({
       navH: navH,
       safeB: safeB
     });
+
+    wx.showShareMenu({
+      withShareTicket: true,
+      menus: ['shareAppMessage', 'shareTimeline']
+    });
+
   },
 
   onInput(e) {
