@@ -351,64 +351,67 @@ downloadMusic() {
   },
 
   handleSaveVideo() {
-    // 1. 检查有没有视频地址
     if (!this.data.result) {
       wx.showToast({ title: '没有可保存的视频', icon: 'none' });
       return;
     }
 
+    const videoUrl = this.data.result;
     wx.showLoading({ title: '视频下载中...' });
 
-    // 2. 先下载视频文件到本地临时路径
-    wx.downloadFile({
-      url: this.data.result,
-      success: (res) => {
-        // 下载成功 (HTTP 200)
-        if (res.statusCode === 200) {
-          
-          // 3. 尝试保存到系统相册
-          wx.saveVideoToPhotosAlbum({
-            filePath: res.tempFilePath,
-            success: () => {
-              wx.hideLoading();
-              wx.showToast({ title: '保存成功！', icon: 'success' });
-            },
-            fail: (err) => {
-              wx.hideLoading();
-              console.error('保存相册失败:', err);
-
-              // 先检查是不是还没给相册权限
-              this.checkAuth(err);
-
-              // ✨✨✨ 核心：这里一定要弹窗！✨✨✨
-              // 如果错误不是权限问题（比如 invalid video），就弹窗告诉用户
-              if (err.errMsg && !err.errMsg.includes('auth')) {
-                wx.showModal({
-                  title: '保存失败',
-                  content: 'iOS系统拒绝保存此视频(通常是格式不支持)。\n错误详情: ' + err.errMsg,
-                  showCancel: false
-                });
-              }
-            }
-          });
-        } else {
-          // 下载请求返回了非 200 状态码 (比如 404, 500)
+    // ✨✨✨ 核心判断：是云存储文件还是普通链接？ ✨✨✨
+    if (videoUrl.startsWith('cloud://')) {
+      // 🚀 方案 B：走云存储内网下载 (绕过域名限制)
+      wx.cloud.downloadFile({
+        fileID: videoUrl,
+        success: (res) => {
+          this.saveVideoToAlbum(res.tempFilePath);
+        },
+        fail: (err) => {
           wx.hideLoading();
-          wx.showModal({
-            title: '下载失败',
-            content: '服务器返回错误码: ' + res.statusCode,
-            showCancel: false
-          });
+          wx.showModal({ title: '云下载失败', content: err.errMsg, showCancel: false });
         }
+      });
+    } else {
+      // 🐢 方案 A：走普通 HTTP 下载 (需要域名白名单)
+      wx.downloadFile({
+        url: videoUrl,
+        success: (res) => {
+          if (res.statusCode === 200) {
+            this.saveVideoToAlbum(res.tempFilePath);
+          } else {
+            wx.hideLoading();
+            // ... (原本的错误处理)
+            // 如果这里报错 domain list，说明你没备案
+            if (res.statusCode === 404) { // 有时候后端返回JSON但前端当成文件下载会404或500
+                 // 这里其实很难捕获后端返回的JSON错误，因为downloadFile只管下载
+            }
+          }
+        },
+        fail: (err) => {
+          wx.hideLoading();
+          // 这里会捕获到 domain 错误
+          wx.showModal({ title: '下载失败', content: '需配置域名白名单或使用云存储方案。\n' + err.errMsg, showCancel: false });
+        }
+      });
+    }
+  },
+
+  // 抽离出来的保存逻辑
+  saveVideoToAlbum(tempFilePath) {
+    wx.saveVideoToPhotosAlbum({
+      filePath: tempFilePath,
+      success: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '保存成功！', icon: 'success' });
       },
       fail: (err) => {
-        // 网络不通，或者域名校验失败，或者超时
         wx.hideLoading();
-        wx.showModal({
-          title: '下载连接错误',
-          content: '无法连接到服务器，请检查网络。\n详情: ' + (err.errMsg || JSON.stringify(err)),
-          showCancel: false
-        });
+        // 处理权限或 iOS 格式问题
+        this.checkAuth(err);
+        if (err.errMsg && !err.errMsg.includes('auth')) {
+           wx.showModal({ title: '保存相册失败', content: '可能是视频格式iOS不支持。\n' + err.errMsg, showCancel: false });
+        }
       }
     });
   },
