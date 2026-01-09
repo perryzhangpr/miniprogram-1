@@ -12,7 +12,7 @@ Page({
   data: {
     navH: 0,
     safeB: 0,
-    cloudDomain:'https://douyin-api-210719-7-1392959478.sh.run.tcloudbase.com',
+    cloudDomain: 'https://douyin-api-210719-7-1392959478.sh.run.tcloudbase.com',
 
     inputUrl: '',
     result: null,
@@ -143,15 +143,16 @@ Page({
       success: (res) => {
         wx.hideLoading();
         if (res.statusCode !== 200) {
-          // 单独处理 400 错误
+          // 单独处理 400 错误（可能是链接无效或视频过大）
           if (res.statusCode === 400) {
-            wx.showToast({ title: '链接错误或不支持', icon: 'none' });
+            const errMsg = res.data?.msg || '链接错误或不支持';
+            wx.showToast({ title: errMsg, icon: 'none', duration: 3000 });
           } else {
             wx.showToast({ title: '服务繁忙: ' + res.statusCode, icon: 'none' });
           }
           return;
         }
-        
+
         const apiData = res.data;
         if (apiData.code === 200 && apiData.data) {
           this.handleSuccess(apiData.data);
@@ -175,7 +176,7 @@ Page({
     const desc = data?.desc || '';
     const title = data?.title || (desc ? (desc.length > 18 ? desc.slice(0, 18) + '…' : desc) : '视频标题');
     const coverUrl = pickCoverUrl(data);
-    
+
     // 2. 提取作者信息
     const author = {
       name: data?.author?.nickname || '未知作者',
@@ -225,9 +226,9 @@ Page({
     this.setData({
       isImageMode,
       result,
-      meta: { 
-        ...this.data.meta, 
-        title, desc, coverUrl, 
+      meta: {
+        ...this.data.meta,
+        title, desc, coverUrl,
         videoUrl: isImageMode ? '' : result,
         author, music, stats, tags
       }
@@ -251,33 +252,33 @@ Page({
     return num.toString();
   },
 
-downloadMusic() {
-  const url = this.data.meta.music.url;
-  if (!url) return wx.showToast({ title: '无音乐资源', icon: 'none' });
+  downloadMusic() {
+    const url = this.data.meta.music.url;
+    if (!url) return wx.showToast({ title: '无音乐资源', icon: 'none' });
 
-  // 既然 openDocument 不支持音频，我们直接提供最实用的两个选项
-  wx.showActionSheet({
-    itemList: ['在线播放', '复制链接 (去浏览器下载)'],
-    success: (res) => {
-      // 选项 1: 在线播放 (使用微信原生背景音频播放器，体验最好)
-      if (res.tapIndex === 0) {
-        const bgm = wx.getBackgroundAudioManager();
-        bgm.title = this.data.meta.music.title || '背景音乐';
-        bgm.epname = this.data.meta.author.name;
-        bgm.coverImgUrl = this.data.meta.music.cover;
-        bgm.src = url; // 设置 src 后会自动开始播放
-        wx.showToast({ title: '开始播放', icon: 'none' });
-      } 
-      // 选项 2: 复制链接
-      else if (res.tapIndex === 1) {
-        wx.setClipboardData({ 
-          data: url,
-          success: () => wx.showToast({ title: '链接已复制', icon: 'none' })
-        });
+    // 既然 openDocument 不支持音频，我们直接提供最实用的两个选项
+    wx.showActionSheet({
+      itemList: ['在线播放', '复制链接 (去浏览器下载)'],
+      success: (res) => {
+        // 选项 1: 在线播放 (使用微信原生背景音频播放器，体验最好)
+        if (res.tapIndex === 0) {
+          const bgm = wx.getBackgroundAudioManager();
+          bgm.title = this.data.meta.music.title || '背景音乐';
+          bgm.epname = this.data.meta.author.name;
+          bgm.coverImgUrl = this.data.meta.music.cover;
+          bgm.src = url; // 设置 src 后会自动开始播放
+          wx.showToast({ title: '开始播放', icon: 'none' });
+        }
+        // 选项 2: 复制链接
+        else if (res.tapIndex === 1) {
+          wx.setClipboardData({
+            data: url,
+            success: () => wx.showToast({ title: '链接已复制', icon: 'none' })
+          });
+        }
       }
-    }
-  });
-},
+    });
+  },
 
   saveToHistory(item) {
     let history = wx.getStorageSync('historyList') || [];
@@ -384,7 +385,7 @@ downloadMusic() {
             // ... (原本的错误处理)
             // 如果这里报错 domain list，说明你没备案
             if (res.statusCode === 404) { // 有时候后端返回JSON但前端当成文件下载会404或500
-                 // 这里其实很难捕获后端返回的JSON错误，因为downloadFile只管下载
+              // 这里其实很难捕获后端返回的JSON错误，因为downloadFile只管下载
             }
           }
         },
@@ -410,7 +411,7 @@ downloadMusic() {
         // 处理权限或 iOS 格式问题
         this.checkAuth(err);
         if (err.errMsg && !err.errMsg.includes('auth')) {
-           wx.showModal({ title: '保存相册失败', content: '可能是视频格式iOS不支持。\n' + err.errMsg, showCancel: false });
+          wx.showModal({ title: '保存相册失败', content: '可能是视频格式iOS不支持。\n' + err.errMsg, showCancel: false });
         }
       }
     });
@@ -497,67 +498,79 @@ downloadMusic() {
     }
   },
 
-// 📺 B 站专用解析函数 (修复遮罩不消失的问题)
-handleBilibiliParse(url) {
-  wx.cloud.callContainer({
-    config: { env: this.config.envId },
-    path: `/api/bilibili/parse?url=${encodeURIComponent(url)}`,
-    header: {
-      'X-WX-SERVICE': this.config.serviceName
-    },
-    method: 'GET',
-    success: (res) => {
-      const data = res.data;
+  // 📺 B 站专用解析函数 (修复遮罩不消失的问题)
+  handleBilibiliParse(url) {
+    wx.cloud.callContainer({
+      config: { env: this.config.envId },
+      path: `/api/bilibili/parse?url=${encodeURIComponent(url)}`,
+      header: {
+        'X-WX-SERVICE': this.config.serviceName
+      },
+      method: 'GET',
+      success: (res) => {
+        // ✅ 先检查 HTTP 状态码
+        if (res.statusCode !== 200) {
+          // 特别处理 400 错误（视频过大等情况）
+          if (res.statusCode === 400) {
+            const errMsg = res.data?.msg || '视频可能过大或链接无效';
+            wx.showToast({ title: errMsg, icon: 'none', duration: 3000 });
+          } else {
+            wx.showToast({ title: '服务繁忙: ' + res.statusCode, icon: 'none' });
+          }
+          return;
+        }
 
-      // ✅ 只要后端返回成功 (200)，无条件放行！
-      if (data.status === 'success' || data.code === 200) {
-        const info = data.data;
-        const proxyUrl = this.data.cloudDomain + info.video_url;
+        const data = res.data;
 
-        this.setData({
-          result: proxyUrl,     
-          isImageMode: false,   
-          
-          meta: {
-            ...this.data.meta,
+        // ✅ 只要后端返回成功 (200)，无条件放行！
+        if (data.status === 'success' || data.code === 200) {
+          const info = data.data;
+          const proxyUrl = this.data.cloudDomain + info.video_url;
+
+          this.setData({
+            result: proxyUrl,
+            isImageMode: false,
+
+            meta: {
+              ...this.data.meta,
+              title: info.desc || 'B站视频',
+              desc: info.desc || '',
+              coverUrl: info.cover_url || '',
+              videoUrl: proxyUrl,
+              author: { name: 'Bilibili UP主', avatar: '../../assets/icons/avatar.png' },
+              stats: { digg: 0, comment: 0, collect: 0, share: 0 },
+              tags: []
+            }
+          });
+
+          // 存入历史记录
+          this.saveToHistory({
+            id: new Date().getTime(),
             title: info.desc || 'B站视频',
             desc: info.desc || '',
             coverUrl: info.cover_url || '',
-            videoUrl: proxyUrl,
-            author: { name: 'Bilibili UP主', avatar: '../../assets/icons/avatar.png' },
-            stats: { digg: 0, comment: 0, collect: 0, share: 0 },
-            tags: []
-          }
-        });
+            type: '视频(B站)',
+            shareUrl: url,
+            timeText: this.formatTime(new Date())
+          });
 
-        // 存入历史记录
-        this.saveToHistory({
-          id: new Date().getTime(),
-          title: info.desc || 'B站视频',
-          desc: info.desc || '',
-          coverUrl: info.cover_url || '',
-          type: '视频(B站)',
-          shareUrl: url,
-          timeText: this.formatTime(new Date())
-        });
+          wx.showToast({ title: '解析成功', icon: 'success' });
 
-        wx.showToast({ title: '解析成功', icon: 'success' });
+        } else {
+          wx.showToast({ title: '解析失败: ' + (data.msg || '未知错误'), icon: 'none' });
+        }
+      },
+      fail: (err) => {
+        console.error('B站解析请求失败', err);
+        wx.showToast({ title: '网络错误', icon: 'none' });
+      },
 
-      } else {
-        wx.showToast({ title: '解析失败: ' + (data.msg || '未知错误'), icon: 'none' });
+      // ✨✨✨ 核心修复：无论成功失败，都在这里关闭转圈圈 ✨✨✨
+      complete: () => {
+        wx.hideLoading(); // 关掉系统的小圈圈
+        this.setData({ isLoading: false }); // 关掉你那个白色方块遮罩！
       }
-    },
-    fail: (err) => {
-      console.error('B站解析请求失败', err);
-      wx.showToast({ title: '网络错误', icon: 'none' });
-    },
-    
-    // ✨✨✨ 核心修复：无论成功失败，都在这里关闭转圈圈 ✨✨✨
-    complete: () => {
-      wx.hideLoading(); // 关掉系统的小圈圈
-      this.setData({ isLoading: false }); // 关掉你那个白色方块遮罩！
-    }
-  });
-},
+    });
+  },
 
 });
