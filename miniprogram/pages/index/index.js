@@ -370,65 +370,6 @@ Page({
         },
         fail: (err) => {
           wx.hideLoading();
-          wx.showModal({ title: '云下载失败', content: err.errMsg, showCancel: false });
-        }
-      });
-    } else if (videoUrl.includes('/api/bilibili/proxy')) {
-      // 🎬 B站专用：先请求proxy接口获取cloud://地址，再下载
-      wx.request({
-        url: videoUrl,
-        method: 'GET',
-        success: (res) => {
-          // 检查HTTP状态码
-          if (res.statusCode === 400) {
-            wx.hideLoading();
-            wx.showModal({
-              title: '下载失败',
-              content: res.data?.msg || '视频可能过大，请尝试其他视频',
-              showCancel: false
-            });
-            return;
-          }
-
-          if (res.statusCode !== 200) {
-            wx.hideLoading();
-            wx.showModal({ title: '下载失败', content: '服务器错误: ' + res.statusCode, showCancel: false });
-            return;
-          }
-
-          const data = res.data;
-          // proxy接口返回 {"status": "success", "type": "cloud_file", "url": "cloud://xxx"}
-          if (data.status === 'success' && data.url && data.url.startsWith('cloud://')) {
-            // 用返回的cloud://地址下载
-            wx.cloud.downloadFile({
-              fileID: data.url,
-              success: (dlRes) => {
-                this.saveVideoToAlbum(dlRes.tempFilePath);
-              },
-              fail: (err) => {
-                wx.hideLoading();
-                wx.showModal({ title: '云下载失败', content: err.errMsg, showCancel: false });
-              }
-            });
-          } else {
-            wx.hideLoading();
-            wx.showModal({
-              title: '下载失败',
-              content: data.msg || '获取视频地址失败',
-              showCancel: false
-            });
-          }
-        },
-        fail: (err) => {
-          wx.hideLoading();
-          wx.showModal({ title: '请求失败', content: err.errMsg, showCancel: false });
-        }
-      });
-    } else {
-      // 🐢 方案 A：走普通 HTTP 下载 (抖音等平台)
-      wx.downloadFile({
-        url: videoUrl,
-        success: (res) => {
           if (res.statusCode === 200) {
             this.saveVideoToAlbum(res.tempFilePath);
           } else {
