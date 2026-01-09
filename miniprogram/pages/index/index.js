@@ -382,10 +382,23 @@ Page({
             this.saveVideoToAlbum(res.tempFilePath);
           } else {
             wx.hideLoading();
-            // ... (原本的错误处理)
-            // 如果这里报错 domain list，说明你没备案
-            if (res.statusCode === 404) { // 有时候后端返回JSON但前端当成文件下载会404或500
-              // 这里其实很难捕获后端返回的JSON错误，因为downloadFile只管下载
+            // 处理 400 错误（视频过大等情况）
+            if (res.statusCode === 400) {
+              // downloadFile 下载的是 JSON 响应体，需要读取临时文件获取错误信息
+              const fs = wx.getFileSystemManager();
+              try {
+                const jsonStr = fs.readFileSync(res.tempFilePath, 'utf8');
+                const errData = JSON.parse(jsonStr);
+                wx.showModal({
+                  title: '下载失败',
+                  content: errData.msg || '视频可能过大，请尝试其他视频',
+                  showCancel: false
+                });
+              } catch (e) {
+                wx.showModal({ title: '下载失败', content: '视频可能过大或链接已失效', showCancel: false });
+              }
+            } else {
+              wx.showModal({ title: '下载失败', content: '服务器返回错误: ' + res.statusCode, showCancel: false });
             }
           }
         },
